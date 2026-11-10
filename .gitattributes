@@ -1,0 +1,11 @@
+# Packagist installs from the git archive: leave out what a project doesn't need.
+/.github            export-ignore
+/assets             export-ignore
+/scripts            export-ignore
+/spec               export-ignore
+/tests              export-ignore
+/.gitattributes     export-ignore
+/.gitignore         export-ignore
+/CONTRIBUTING.md    export-ignore
+/phpstan.neon.dist  export-ignore
+/phpunit.xml.dist   export-ignore
