@@ -78,7 +78,7 @@ Webhooks are shared: one endpoint receives every service's events, all verified 
 composer require reeds/reeds-php
 ```
 
-It needs PHP 8.1 or later and Guzzle 7, which Composer installs for you. Laravel already ships Guzzle.
+It needs PHP 8.1 or later and Guzzle 7 or 8, which Composer installs for you. Laravel already ships Guzzle.
 
 ## Credentials and modes
 
@@ -320,7 +320,7 @@ final class ShipOrder
 $delivery = \Reeds\Laravel\Facades\Reeds::shipping()->deliveries->get('dlv_9Kd3Qx7M');
 ```
 
-A webhook route, in `routes/api.php` (no CSRF there). `$request->getContent()` is the raw body:
+A webhook route, in `routes/api.php` (no CSRF there; on Laravel 11 and later, `php artisan install:api` creates the file). `$request->getContent()` is the raw body:
 
 ```php
 use Illuminate\Http\Request;

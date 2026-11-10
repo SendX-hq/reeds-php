@@ -1,12 +1,15 @@
 <?php
 
 // The library over real HTTP, with no test framework: a token, a read, a write
-// retried after a 503 with the same Idempotency-Key, two pages, an error.
+// retried after a 503 with the same Idempotency-Key, two pages, an error, a
+// timeout and a refused connection.
 //   php -S 127.0.0.1:8099 tests/smoke/server.php & php tests/smoke/smoke.php http://127.0.0.1:8099
 declare(strict_types=1);
 
 require __DIR__ . '/../../vendor/autoload.php';
 
+use Reeds\Exception\ConnectionException;
+use Reeds\Exception\ConnectionTimeoutException;
 use Reeds\Exception\NotFoundException;
 use Reeds\Reeds;
 
@@ -39,6 +42,21 @@ try {
     $check(false, 'a 404 throws');
 } catch (NotFoundException $error) {
     $check($error->errorCode === 'NOT_FOUND' && $error->requestId === 'req_smoke', 'the 404\'s code and request id');
+}
+
+// The two failures with no response, as the real transport reports them.
+try {
+    $reeds->shipping->wallet->get(['timeout' => 0.3, 'max_retries' => 0]);
+    $check(false, 'a slow answer times out');
+} catch (ConnectionTimeoutException $error) {
+    $check($error->errorCode === 'TIMEOUT', 'the timeout\'s code');
+}
+$nobody = new Reeds(['client_id' => 'rci_test_smoke', 'client_secret' => 'rcs_test_smoke', 'base_url' => 'http://127.0.0.1:9', 'max_retries' => 0]);
+try {
+    $nobody->shipping->coverage->get();
+    $check(false, 'no server throws');
+} catch (ConnectionException $error) {
+    $check(!$error instanceof ConnectionTimeoutException && $error->errorCode === 'CONNECTION_FAILED', 'a refused connection');
 }
 
 $calls = array_map(static fn (string $line) => json_decode($line, true), array_filter(explode("\n", (string) file_get_contents($log))));

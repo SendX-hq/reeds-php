@@ -6,7 +6,6 @@ namespace Reeds\Core;
 
 use GuzzleHttp\Client as Guzzle;
 use GuzzleHttp\ClientInterface;
-use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Exception\TransferException;
 use Psr\Http\Message\ResponseInterface;
 use Reeds\Exception\ApiException;
@@ -276,7 +275,8 @@ final class Client
             if (isset($options['headers']) && is_array($options['headers'])) {
                 $headers = array_merge($headers, $options['headers']);
             }
-            $request['headers'] = $headers;
+            // Guzzle 8 refuses header values that aren't strings.
+            $request['headers'] = array_map(static fn ($value) => is_array($value) ? array_map('strval', $value) : (string) $value, $headers);
 
             try {
                 $response = $this->http->request($method, $url, $request);
@@ -319,8 +319,14 @@ final class Client
 
     private static function isTimeout(TransferException $error): bool
     {
-        $context = $error instanceof ConnectException ? $error->getHandlerContext() : [];
-        return ($context['errno'] ?? null) === 28 || stripos($error->getMessage(), 'timed out') !== false;
+        // Guzzle 8 throws a timeout class; Guzzle 7 puts cURL's errno (28) in the handler context.
+        foreach (['ConnectTimeoutException', 'NetworkTimeoutException', 'ResponseTimeoutException'] as $class) {
+            if (is_a($error, 'GuzzleHttp\\Exception\\' . $class)) {
+                return true;
+            }
+        }
+        $context = method_exists($error, 'getHandlerContext') ? $error->getHandlerContext() : [];
+        return (is_array($context) && ($context['errno'] ?? null) === 28) || stripos($error->getMessage(), 'timed out') !== false;
     }
 
     /** @param array<string, mixed> $query */

@@ -36,6 +36,9 @@ if ($path === '/oauth/token') {
     } else {
         $send(201, ['status' => 'success', 'data' => ['id' => 'dlv_1'] + json_decode((string) file_get_contents('php://input'), true)]);
     }
+} elseif ($path === '/shipping/v1/wallet') {
+    sleep(2); // longer than the smoke test's timeout
+    $send(200, ['status' => 'success', 'data' => ['balance' => 0]]);
 } elseif ($path === '/shipping/v1/deliveries') {
     $after = $_GET['starting_after'] ?? null;
     $send(200, ['status' => 'success', 'data' => $after ? [['id' => 'dlv_1']] : [['id' => 'dlv_3'], ['id' => 'dlv_2']], 'has_more' => !$after]);

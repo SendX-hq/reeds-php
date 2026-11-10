@@ -68,12 +68,21 @@ final class FakeApi
             $answer = $request->getUri()->getPath() === '/oauth/token' ? ($this->token)($request) : ($this->handler)($request);
             return match (true) {
                 $answer === 'connection-failed' => Create::rejectionFor(new ConnectException('cURL error 7: Failed to connect to api.getreeds.co', $request)),
-                $answer === 'timeout' => Create::rejectionFor(new ConnectException('cURL error 28: Operation timed out', $request, null, ['errno' => 28])),
+                $answer === 'timeout' => Create::rejectionFor(self::timeout($request)),
                 $answer instanceof Response => Create::promiseFor($answer),
                 default => throw new \LogicException('A fake handler must answer a Response, "connection-failed" or "timeout".'),
             };
         };
         return new Guzzle(['handler' => HandlerStack::create($handler)]);
+    }
+
+    /** A timeout as the installed Guzzle reports it: its own class in 8, cURL's errno in the context in 7. */
+    private static function timeout(RequestInterface $request): \Throwable
+    {
+        $guzzle8 = 'GuzzleHttp\\Exception\\NetworkTimeoutException';
+        return class_exists($guzzle8)
+            ? new $guzzle8('cURL error 28: Operation timed out', $request)
+            : new ConnectException('cURL error 28: Operation timed out', $request, null, ['errno' => 28]);
     }
 
     /** @return list<RequestInterface> The calls to the API itself, not the token endpoint. */

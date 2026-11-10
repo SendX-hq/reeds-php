@@ -173,6 +173,15 @@ final class ClientTest extends TestCase
         self::assertSame('https://api.example.test/oauth/token', (string) $api->tokenCalls()[0]->getUri());
     }
 
+    public function testSendsHeaderValuesThatArentStringsAsStrings(): void
+    {
+        // Guzzle 8 throws on a header value that isn't a string.
+        $api = new FakeApi(static fn () => FakeApi::success([]));
+        $api->client(['default_headers' => ['X-Shard' => 3]])->shipping->coverage->get(['headers' => ['X-Attempt' => 1.5]]);
+        self::assertSame('3', $api->apiCalls()[0]->getHeaderLine('X-Shard'));
+        self::assertSame('1.5', $api->apiCalls()[0]->getHeaderLine('X-Attempt'));
+    }
+
     public function testAnEmptyBaseUrlMeansTheDefault(): void
     {
         $api = new FakeApi(static fn () => FakeApi::success([]));
