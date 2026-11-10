@@ -2,7 +2,7 @@
 
 ## 0.1.0 (2026-11-10)
 
-The first release, for the Shipping API. Install with `composer require reeds/reeds-php`. It needs PHP 8.1 or later and works with Guzzle 7 or 8.
+The first release, for the Shipping API. Install with `composer require reeds/reeds-sdk`. It needs PHP 8.1 or later and works with Guzzle 7 or 8.
 
 - `$reeds->shipping`: coverage, quotes, deliveries (create, list, get, update, book, mark ready, cancel, label), the wallet (get, fund, transactions), invoices (list, get, PDF) and the sandbox.
 - `$reeds->webhooks`: signature verification (both secrets while you rotate one), decoded events, test events.

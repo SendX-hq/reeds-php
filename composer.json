@@ -1,5 +1,5 @@
 {
-    "name": "reeds/reeds-php",
+    "name": "reeds/reeds-sdk",
     "description": "The official PHP library for the Reeds APIs: one client for every Reeds service. Shipping: quotes, deliveries, labels, wallet, invoices and webhooks.",
     "type": "library",
     "license": "MIT",
