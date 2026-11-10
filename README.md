@@ -7,10 +7,10 @@
 </p>
 
 <p align="center">
-  <a href="https://packagist.org/packages/reeds/reeds-sdk"><img src="https://img.shields.io/packagist/v/reeds/reeds-sdk?color=0066F5&label=packagist" alt="Packagist version"></a>
+  <a href="https://packagist.org/packages/reeds-hq/reeds-sdk"><img src="https://img.shields.io/packagist/v/reeds-hq/reeds-sdk?color=0066F5&label=packagist" alt="Packagist version"></a>
   <a href="https://github.com/SendX-hq/reeds-php/actions/workflows/ci.yml"><img src="https://github.com/SendX-hq/reeds-php/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <img src="https://img.shields.io/packagist/dependency-v/reeds/reeds-sdk/php?color=0066F5" alt="PHP version">
-  <a href="LICENSE"><img src="https://img.shields.io/packagist/l/reeds/reeds-sdk?color=0066F5" alt="MIT license"></a>
+  <img src="https://img.shields.io/packagist/dependency-v/reeds-hq/reeds-sdk/php?color=0066F5" alt="PHP version">
+  <a href="LICENSE"><img src="https://img.shields.io/packagist/l/reeds-hq/reeds-sdk?color=0066F5" alt="MIT license"></a>
 </p>
 
 <p align="center">
@@ -75,7 +75,7 @@ Webhooks are shared: one endpoint receives every service's events, all verified 
 ## Install
 
 ```sh
-composer require reeds/reeds-sdk
+composer require reeds-hq/reeds-sdk
 ```
 
 It needs PHP 8.1 or later and Guzzle 7 or 8, which Composer installs for you. Laravel already ships Guzzle.
