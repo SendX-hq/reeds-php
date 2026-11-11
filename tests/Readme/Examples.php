@@ -77,6 +77,47 @@ final class Examples
         echo $reeds->mode, implode(',', $reeds->scopes());
     }
 
+    public function addressSearch(Reeds $reeds): void
+    {
+        // One session token per address being typed: the same on every call for that address, and on the
+        // details call that ends it, so the whole search counts once. Start a new one for the next address.
+        $session = bin2hex(random_bytes(16));
+
+        $found = $reeds->shipping->addresses->autocomplete(['query' => '23 Allen Avenue', 'session_token' => $session]);
+        foreach ($found['suggestions'] as $suggestion) {
+            echo $suggestion['main_text'], ', ', $suggestion['secondary_text'], PHP_EOL; // at most 6, best first
+        }
+
+        // The suggestion your customer picked, with the same token:
+        $place = $reeds->shipping->addresses->details(['place_id' => $found['suggestions'][0]['place_id'], 'session_token' => $session]);
+        if ($place['lga'] === null || !$place['precise']) {
+            // A quote needs the LGA, and an imprecise place is a whole area or road (its point is only the middle).
+            exit('Ask your customer for the street and its LGA.');
+        }
+
+        $pickup = [
+            'name' => 'Tola Fabrics',
+            'phone' => '08051234567',
+            'address' => $place['formatted_address'],
+            'lga' => $place['lga'],
+            'state' => $place['state'],
+            'place_id' => $place['place_id'],
+        ];
+        if ($place['area'] !== null) {
+            $pickup['area'] = $place['area'];
+        }
+
+        $quote = $reeds->shipping->quotes->create([
+            'pickup' => $pickup,
+            'dropoff' => ['name' => 'Chinedu Eze', 'phone' => '08098765432', 'address' => '14 Admiralty Way', 'area' => 'Lekki Phase 1', 'lga' => 'Eti-Osa', 'state' => 'Lagos'],
+            'package' => ['description' => '2 pairs of sneakers', 'quantity' => 1, 'weight_kg' => 1.5],
+        ]);
+
+        // A map pin: the nearest address, with its own coordinates. Each pin is one search.
+        $pin = $reeds->shipping->addresses->reverse(['latitude' => 6.6018, 'longitude' => 3.3515]);
+        echo $quote['available'] ? 'priced' : 'not served', $pin['formatted_address'];
+    }
+
     public function plainWebhook(): void
     {
         $webhooks = new Webhooks();

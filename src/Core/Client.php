@@ -340,10 +340,24 @@ final class Client
             $pairs[$key] = match (true) {
                 is_array($value) => implode(',', array_map('strval', $value)),
                 is_bool($value) => $value ? 'true' : 'false',
+                is_float($value) => self::decimal($value),
                 default => (string) $value,
             };
         }
         return $pairs === [] ? '' : '?' . http_build_query($pairs, '', '&', PHP_QUERY_RFC3986);
+    }
+
+    /**
+     * A float as plain decimal digits, as the API reads a number: never an
+     * exponent (PHP writes 0.00001 as "1.0E-5") and never a locale's comma.
+     */
+    private static function decimal(float $value): string
+    {
+        $text = (string) $value;
+        if (stripos($text, 'e') === false) {
+            return $text;
+        }
+        return rtrim(rtrim(sprintf('%.14F', $value), '0'), '.');
     }
 
     /** Seconds from a Retry-After header (seconds, or an HTTP date). */

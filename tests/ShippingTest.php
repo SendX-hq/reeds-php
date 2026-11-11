@@ -15,6 +15,19 @@ final class ShippingTest extends TestCase
 {
     private const PICKUP = ['name' => 'Tola Fabrics', 'phone' => '08051234567', 'address' => '23 Allen Avenue', 'lga' => 'Ikeja', 'state' => 'Lagos'];
     private const DROPOFF = ['name' => 'Chinedu Eze', 'phone' => '08098765432', 'address' => '14 Admiralty Way', 'lga' => 'Eti-Osa', 'state' => 'Lagos'];
+    private const SESSION = '3f2c8d1e-7b4a-4c55-9e0d-2a6b1f9c8e70';
+    private const PLACE = [
+        'place_id' => 'ChIJN1t_tDeuEmsRUsoyG83frY4',
+        'name' => '23 Allen Avenue',
+        'formatted_address' => '23 Allen Ave, Allen, Ikeja 101233, Lagos, Nigeria',
+        'area' => 'Ikeja',
+        'lga' => 'Ikeja',
+        'state' => 'Lagos',
+        'country' => 'NG',
+        'latitude' => 6.6018,
+        'longitude' => 3.3515,
+        'precise' => true,
+    ];
 
     public function testSendsEachCallToItsPathWithItsMethodBodyAndQuery(): void
     {
@@ -40,6 +53,9 @@ final class ShippingTest extends TestCase
         $s->deliveries->markReady('dlv_1');
         $s->deliveries->cancel('dlv_1', ['reason' => 'Customer cancelled']);
         $s->deliveries->label('dlv_1');
+        $s->addresses->autocomplete(['query' => '23 Allen Avenue', 'session_token' => self::SESSION]);
+        $s->addresses->details(['place_id' => 'ChIJN1t_tDeuEmsRUsoyG83frY4', 'session_token' => self::SESSION]);
+        $s->addresses->reverse(['latitude' => 6.6018, 'longitude' => 3.3515]);
         $s->wallet->get();
         $s->wallet->fund(['amount' => 500000]);
         $s->wallet->listTransactions(['limit' => 5]);
@@ -66,6 +82,9 @@ final class ShippingTest extends TestCase
             'POST /shipping/v1/deliveries/dlv_1/ready',
             'POST /shipping/v1/deliveries/dlv_1/cancel {"reason":"Customer cancelled"}',
             'GET /shipping/v1/deliveries/dlv_1/label',
+            'GET /shipping/v1/addresses/autocomplete?query=23%20Allen%20Avenue&session_token=' . self::SESSION,
+            'GET /shipping/v1/addresses/details?place_id=ChIJN1t_tDeuEmsRUsoyG83frY4&session_token=' . self::SESSION,
+            'GET /shipping/v1/addresses/reverse?latitude=6.6018&longitude=3.3515',
             'GET /shipping/v1/wallet',
             'POST /shipping/v1/wallet/fund {"amount":500000}',
             'GET /shipping/v1/wallet/transactions?limit=5',
@@ -99,6 +118,67 @@ final class ShippingTest extends TestCase
         $api = new FakeApi(static fn () => FakeApi::success(['available' => false, 'reason' => ['code' => 'INTERSTATE_NOT_AVAILABLE', 'message' => "Reeds doesn't deliver from Lagos to Kano."]]));
         $quote = $api->client()->shipping->quotes->create(['pickup' => self::PICKUP, 'dropoff' => self::DROPOFF]);
         self::assertFalse($quote['available']);
+    }
+
+    public function testAddressSearchReturnsTheSuggestionsAndThePlace(): void
+    {
+        $suggestions = ['suggestions' => [
+            ['place_id' => 'ChIJN1t_tDeuEmsRUsoyG83frY4', 'main_text' => '23 Allen Avenue', 'secondary_text' => 'Ikeja, Lagos, Nigeria'],
+            ['place_id' => 'ChIJ8TQy0JKLOxARmZ9bJc2sVkA', 'main_text' => 'Allen Avenue Roundabout', 'secondary_text' => 'Ikeja, Lagos, Nigeria'],
+        ]];
+        $api = new FakeApi(static fn (RequestInterface $request): Response => str_ends_with($request->getUri()->getPath(), '/autocomplete')
+            ? FakeApi::success($suggestions)
+            : FakeApi::success(self::PLACE));
+        $addresses = $api->client()->shipping->addresses;
+
+        self::assertSame($suggestions, $addresses->autocomplete(['query' => 'Allen', 'session_token' => self::SESSION]));
+        self::assertSame(self::PLACE, $addresses->details(['place_id' => 'ChIJN1t_tDeuEmsRUsoyG83frY4']));
+        self::assertSame(self::PLACE, $addresses->reverse(['latitude' => 6.6018, 'longitude' => 3.3515]));
+
+        $calls = $api->apiCalls();
+        // Without a session token the place is looked up on its own: no empty token is sent.
+        self::assertSame('place_id=ChIJN1t_tDeuEmsRUsoyG83frY4', $calls[1]->getUri()->getQuery());
+        foreach ($calls as $call) {
+            self::assertSame('GET', $call->getMethod());
+            self::assertSame('', (string) $call->getBody());
+            self::assertFalse($call->hasHeader('Idempotency-Key'));
+        }
+    }
+
+    public function testAPinIsSentAsPlainDecimalsWhateverTheLocale(): void
+    {
+        $api = new FakeApi(static fn () => FakeApi::success(self::PLACE));
+        $locale = setlocale(LC_NUMERIC, '0');
+        setlocale(LC_NUMERIC, 'de_DE.UTF-8', 'de_DE', 'fr_FR.UTF-8', 'fr_FR');
+        try {
+            $addresses = $api->client()->shipping->addresses;
+            $addresses->reverse(['latitude' => 0.00001, 'longitude' => -0.000003]);
+            $addresses->reverse(['latitude' => 9.0765, 'longitude' => 7.3986]);
+            $addresses->reverse(['latitude' => 6, 'longitude' => 3]);
+        } finally {
+            setlocale(LC_NUMERIC, $locale === false ? 'C' : $locale);
+        }
+        self::assertSame([
+            'latitude=0.00001&longitude=-0.000003',
+            'latitude=9.0765&longitude=7.3986',
+            'latitude=6&longitude=3',
+        ], array_map(static fn ($c) => $c->getUri()->getQuery(), $api->apiCalls()));
+    }
+
+    public function testASearchPastTheAllowanceOrSwitchedOffIsPermissionDenied(): void
+    {
+        foreach (['ADDRESS_SEARCH_LIMIT_REACHED', 'ADDRESS_SEARCH_DISABLED'] as $code) {
+            $api = new FakeApi(static fn () => FakeApi::failure(403, $code, 'Contact Reeds support.'));
+            try {
+                $api->client()->shipping->addresses->autocomplete(['query' => 'Allen', 'session_token' => self::SESSION]);
+                self::fail("Expected {$code}.");
+            } catch (PermissionDeniedException $error) {
+                self::assertSame($code, $error->errorCode);
+                self::assertSame(403, $error->getCode());
+                self::assertSame("https://developer.getreeds.co/errors/{$code}", $error->docUrl);
+            }
+            self::assertCount(1, $api->apiCalls(), 'A 403 is not retried.');
+        }
     }
 
     /** @param list<list<string>> $pages */

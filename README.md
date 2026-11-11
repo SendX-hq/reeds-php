@@ -38,7 +38,7 @@ if ($quote['available']) {
 - [Why use the library](#why-use-the-library)
 - [Install](#install)
 - [Credentials and modes](#credentials-and-modes)
-- [Shipping](#shipping): [quickstart](#quickstart), [coverage and quotes](#coverage-and-quotes), [deliveries](#deliveries), [statuses](#delivery-statuses), [labels](#labels), [wallet and invoices](#wallet-and-invoices), [sandbox](#test-mode-and-the-sandbox)
+- [Shipping](#shipping): [quickstart](#quickstart), [coverage and quotes](#coverage-and-quotes), [address search](#address-search), [deliveries](#deliveries), [statuses](#delivery-statuses), [labels](#labels), [wallet and invoices](#wallet-and-invoices), [sandbox](#test-mode-and-the-sandbox)
 - [Webhooks](#webhooks)
 - [Laravel](#laravel)
 - [Lists and pagination](#lists-and-pagination)
@@ -54,7 +54,7 @@ Reeds offers its services as separate APIs. The library gives each one a propert
 
 | Service | On the client | Status |
 |---|---|---|
-| **Shipping**: quotes, deliveries, labels, the wallet, invoices, the sandbox | `$reeds->shipping` | **Available** |
+| **Shipping**: quotes, address search, deliveries, labels, the wallet, invoices, the sandbox | `$reeds->shipping` | **Available** |
 
 Webhooks are shared: one endpoint receives every service's events, all verified by `$reeds->webhooks`. A new service arrives in a minor version of this library, so upgrading never breaks the services you already use.
 
@@ -143,6 +143,53 @@ $coverage = $reeds->shipping->coverage->get(); // the states, zones and inter-st
 ```
 
 A quote holds its price for 24 hours. A route Reeds doesn't serve comes back as `'available' => false` with a `reason` (`ADDRESS_NOT_SERVICEABLE`, `INTERSTATE_NOT_AVAILABLE`, ...), never as an exception. Branch on `$quote['reason']['code']`, not the message.
+
+### Address search
+
+Complete an address as your customer types, or read one from a map pin, and give the quote a `place_id` with the `lga` and `state` it needs. The addresses come from Google and are in Nigeria. Call these from your server, as every call with your credentials is.
+
+```php
+// One session token per address being typed: the same on every call for that address, and on the
+// details call that ends it, so the whole search counts once. Start a new one for the next address.
+$session = bin2hex(random_bytes(16));
+
+$found = $reeds->shipping->addresses->autocomplete(['query' => '23 Allen Avenue', 'session_token' => $session]);
+foreach ($found['suggestions'] as $suggestion) {
+    echo $suggestion['main_text'], ', ', $suggestion['secondary_text'], PHP_EOL; // at most 6, best first
+}
+
+// The suggestion your customer picked, with the same token:
+$place = $reeds->shipping->addresses->details(['place_id' => $found['suggestions'][0]['place_id'], 'session_token' => $session]);
+if ($place['lga'] === null || !$place['precise']) {
+    // A quote needs the LGA, and an imprecise place is a whole area or road (its point is only the middle).
+    exit('Ask your customer for the street and its LGA.');
+}
+
+$pickup = [
+    'name' => 'Tola Fabrics',
+    'phone' => '08051234567',
+    'address' => $place['formatted_address'],
+    'lga' => $place['lga'],
+    'state' => $place['state'],
+    'place_id' => $place['place_id'],
+];
+if ($place['area'] !== null) {
+    $pickup['area'] = $place['area'];
+}
+
+$quote = $reeds->shipping->quotes->create([
+    'pickup' => $pickup,
+    'dropoff' => ['name' => 'Chinedu Eze', 'phone' => '08098765432', 'address' => '14 Admiralty Way', 'area' => 'Lekki Phase 1', 'lga' => 'Eti-Osa', 'state' => 'Lagos'],
+    'package' => ['description' => '2 pairs of sneakers', 'quantity' => 1, 'weight_kg' => 1.5],
+]);
+
+// A map pin: the nearest address, with its own coordinates. Each pin is one search.
+$pin = $reeds->shipping->addresses->reverse(['latitude' => 6.6018, 'longitude' => 3.3515]);
+```
+
+To deliver to the pin itself, send your pin's `latitude` and `longitude` in the quote with the address as the text; to deliver to the address found, send its `place_id`.
+
+Address search is free. In Test mode an account has 50 searches to start (Reeds can raise it); in Live it is unlimited unless Reeds sets a monthly limit for the account. Past the allowance or the limit, a search throws a `PermissionDeniedException` with `ADDRESS_SEARCH_LIMIT_REACHED`, and `ADDRESS_SEARCH_DISABLED` when Reeds has switched it off for the account. The addresses are Google's: show the Google logo or "Powered by Google" next to suggestions that aren't on a Google map, and show pins on a Google map. See [Address search](https://developer.getreeds.co/docs/shipping/address-search).
 
 ### Deliveries
 
@@ -377,7 +424,7 @@ try {
 | Exception | Status | Typical codes |
 |---|---|---|
 | `AuthenticationException` | 401, or wrong or missing credentials | `TOKEN_EXPIRED`, `invalid_client`, `MISSING_CREDENTIALS` |
-| `PermissionDeniedException` | 403 | `INSUFFICIENT_SCOPE`, `IP_NOT_ALLOWED`, `TEST_MODE_ONLY`, `ACCOUNT_ON_HOLD` |
+| `PermissionDeniedException` | 403 | `INSUFFICIENT_SCOPE`, `IP_NOT_ALLOWED`, `TEST_MODE_ONLY`, `ACCOUNT_ON_HOLD`, `ADDRESS_SEARCH_LIMIT_REACHED`, `ADDRESS_SEARCH_DISABLED` |
 | `NotFoundException` | 404 | `NOT_FOUND` |
 | `ConflictException` | 409 | `ACTION_NOT_ALLOWED`, `QUOTE_ALREADY_USED`, `QUOTE_EXPIRED`, `CANCEL_NOT_ALLOWED` |
 | `InvalidRequestException` | 400, 422 | `INVALID_REQUEST` (see `fields`), `IDEMPOTENCY_KEY_REQUIRED` |
