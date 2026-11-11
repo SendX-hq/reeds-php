@@ -15,6 +15,8 @@ namespace Reeds\Shipping;
  * @phpstan-type AddressInput array{name: string, phone: string, email?: string, address: string, area?: string, lga: string, state: string, place_id?: string, latitude?: float|int, longitude?: float|int, notes?: string, metadata?: Metadata, ...}
  * @phpstan-type Metadata array<string, string>
  * @phpstan-type Coverage array{states?: list<array{state?: string, pickup?: bool, delivery?: bool, zones?: list<string>, ...}>, interstate?: list<array{from?: string, to?: string, promise?: string, available?: bool, ...}>, ...}
+ * @phpstan-type PlaceSuggestion array{place_id: string, main_text: string, secondary_text: string, ...}
+ * @phpstan-type Place array{place_id: string, name: string, formatted_address: string, area: string|null, lga: string|null, state: string, country: 'NG', latitude: float|int, longitude: float|int, precise: bool, ...}
  * @phpstan-type Package array{description: string, quantity?: int, weight_kg?: float|int, declared_value?: int, dimensions_cm?: array{length: float|int, width: float|int, height: float|int, ...}, ...}
  * @phpstan-type Fee array{delivery_fee: int, vat: int, service_charge: int, discount: int, total: int, currency: 'NGN', ...}
  * @phpstan-type DeliveryFee array{delivery_fee: int, vat: int, service_charge: int, discount: int, total: int, currency: 'NGN', status?: string, billing?: string, ...}
@@ -59,6 +61,9 @@ namespace Reeds\Shipping;
  * @phpstan-type InvoiceIssuedEvent array{id: string, type: 'invoice.issued', created_at: string, livemode: bool, data: array{invoice?: Invoice, ...}, ...}
  * @phpstan-type InvoicePaidEvent array{id: string, type: 'invoice.paid', created_at: string, livemode: bool, data: array{invoice?: Invoice, ...}, ...}
  * @phpstan-type InvoiceOverdueEvent array{id: string, type: 'invoice.overdue', created_at: string, livemode: bool, data: array{invoice?: Invoice, ...}, ...}
+ * @phpstan-type AutocompleteAddressesQuery array{query: string, session_token: string, ...}
+ * @phpstan-type GetAddressDetailsQuery array{place_id: string, session_token?: string, ...}
+ * @phpstan-type ReverseGeocodeAddressQuery array{latitude: float|int, longitude: float|int, ...}
  * @phpstan-type ListDeliveriesQuery array{status?: DeliveryStatus, merchant_id?: string, reference?: string, created_from?: string, created_to?: string, ids?: string, limit?: int, starting_after?: string, ...}
  * @phpstan-type ListWalletTransactionsQuery array{limit?: int, starting_after?: string, ...}
  * @phpstan-type ListInvoicesQuery array{status?: InvoiceStatus, limit?: int, starting_after?: string, ...}
