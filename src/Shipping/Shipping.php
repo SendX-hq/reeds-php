@@ -6,7 +6,7 @@ namespace Reeds\Shipping;
 
 use Reeds\Core\Client;
 
-/** The Shipping API: `$reeds->shipping`. Quotes, deliveries, the wallet, invoices and the sandbox. */
+/** The Shipping API: `$reeds->shipping`. Quotes, deliveries, address search, the wallet, invoices and the sandbox. */
 final class Shipping
 {
     /** The Shipping API's base path. */
@@ -15,6 +15,7 @@ final class Shipping
     public readonly Coverages $coverage;
     public readonly Quotes $quotes;
     public readonly Deliveries $deliveries;
+    public readonly Addresses $addresses;
     public readonly WalletResource $wallet;
     public readonly Invoices $invoices;
     public readonly Sandbox $sandbox;
@@ -24,6 +25,7 @@ final class Shipping
         $this->coverage = new Coverages($client);
         $this->quotes = new Quotes($client);
         $this->deliveries = new Deliveries($client);
+        $this->addresses = new Addresses($client);
         $this->wallet = new WalletResource($client);
         $this->invoices = new Invoices($client);
         $this->sandbox = new Sandbox($client);

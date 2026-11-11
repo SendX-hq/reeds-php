@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0 (2026-11-11)
+
+- Address search, `$reeds->shipping->addresses`: `autocomplete()` suggests addresses as your customer types, `details()` returns the full address of the place they pick, and `reverse()` returns the address at a map pin. Each answer carries the `place_id`, `lga` and `state` a quote needs. A search past the account's allowance, or with address search switched off, throws a `PermissionDeniedException` (`ADDRESS_SEARCH_LIMIT_REACHED`, `ADDRESS_SEARCH_DISABLED`).
+- Floats in a query string are always sent as plain decimals (`0.00001`, never `1.0E-5`).
+- The Shipping API spec and its array shapes are synced from production: `Place`, `PlaceSuggestion` and the address search query shapes, and the two new error codes.
+
 ## 0.1.0 (2026-11-10)
 
 The first release, for the Shipping API. Install with `composer require reeds-hq/reeds-sdk`. It needs PHP 8.1 or later and works with Guzzle 7 or 8.
